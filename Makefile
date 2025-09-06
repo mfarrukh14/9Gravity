@@ -27,11 +27,13 @@ endif
 # Compiler and flags
 CXX := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -O2
-INCLUDES := -Iinclude
+INCLUDES := -Iinclude -Iimgui -Iimgui/backends
 
 # Source and object files
 SRCDIR := src
-SOURCES := $(wildcard $(SRCDIR)/*.cpp)
+IMGUIDIR := imgui
+IMGUI_BACKEND_DIR := imgui/backends
+SOURCES := $(wildcard $(SRCDIR)/*.cpp) $(wildcard $(IMGUIDIR)/*.cpp) $(IMGUI_BACKEND_DIR)/imgui_impl_sdl3.cpp $(IMGUI_BACKEND_DIR)/imgui_impl_opengl3.cpp
 OBJECTS := $(SOURCES:.cpp=.o)
 TARGET := 9Gravity$(EXECUTABLE_EXT)
 
@@ -94,6 +96,7 @@ ifeq ($(PLATFORM),Windows)
     
     # Windows-specific flags
     LDFLAGS += -static-libgcc -static-libstdc++
+    LIBS += -lopengl32
     
 else ifeq ($(PLATFORM),Linux)
     # Check for local SDL first (for consistent builds)
