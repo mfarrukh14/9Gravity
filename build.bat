@@ -65,7 +65,7 @@ if %errorlevel% neq 0 (
 )
 
 echo Compiling with GCC...
-g++ -std=c++17 -Iinclude -I"SDL/x86_64-w64-mingw32/include" -Iimgui -Iimgui/backends src/main.cpp src/Engine.cpp src/Renderer.cpp src/InputManager.cpp src/AudioManager.cpp src/AssetManager.cpp src/Scene.cpp src/Physics.cpp imgui/imgui.cpp imgui/imgui_demo.cpp imgui/imgui_draw.cpp imgui/imgui_tables.cpp imgui/imgui_widgets.cpp imgui/backends/imgui_impl_sdl3.cpp imgui/backends/imgui_impl_opengl3.cpp -o 9Gravity.exe -L"SDL/x86_64-w64-mingw32/lib" -lSDL3 -lopengl32
+g++ -std=c++17 -Iinclude -I"SDL/x86_64-w64-mingw32/include" -Iimgui -Iimgui/backends editor/gui/GameEditor.cpp src/main.cpp src/Engine.cpp src/Renderer.cpp src/InputManager.cpp src/AudioManager.cpp src/AssetManager.cpp src/Scene.cpp src/Physics.cpp imgui/imgui.cpp imgui/imgui_demo.cpp imgui/imgui_draw.cpp imgui/imgui_tables.cpp imgui/imgui_widgets.cpp imgui/backends/imgui_impl_sdl3.cpp imgui/backends/imgui_impl_opengl3.cpp -o 9Gravity.exe -L"SDL/x86_64-w64-mingw32/lib" -lSDL3 -lopengl32
 
 if %errorlevel% equ 0 (
     echo Copying SDL3.dll...

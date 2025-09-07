@@ -1,144 +1,216 @@
-#include "Engine.h"
-#include "Scene.h"
-#include "Physics.h"
-#include "InputManager.h"
+#include "../editor/gui/GameEditor.h"
+
+#include <imgui.h>
+#include <imgui_impl_sdl3.h>
+#include <imgui_impl_opengl3.h>
+
+#include <SDL3/SDL.h>            
+#include <SDL3/SDL_opengl.h>     
+#include <stdio.h>
+#include <filesystem>
+#include <string>
 #include <iostream>
-#include <memory>
 
-class Ball : public GameObject {
-public:
-    Ball(float x, float y) : size(20.0f) {
-        position = Vector2(x, y);
-        velocity = Vector2(100.0f, -200.0f); // Initial velocity
-        
-        // Physics body
-        body.position = position;
-        body.velocity = velocity;
-        body.mass = 1.0f;
-        body.restitution = 0.8f;
-    }
-    
-    void Update(float deltaTime) override {
-        // Apply gravity
-        Physics::ApplyGravity(body, Vector2(0, 500.0f));
-        
-        // Update physics
-        Physics::UpdateBody(body, deltaTime);
-        
-        // Update game object position
-        position = body.position;
-        velocity = body.velocity;
-        
-        // Simple boundary collision (screen wrap/bounce)
-        if (position.x - size/2 < 0) {
-            position.x = size/2;
-            body.position.x = position.x;
-            body.velocity.x = -body.velocity.x * body.restitution;
-        }
-        if (position.x + size/2 > 800) {
-            position.x = 800 - size/2;
-            body.position.x = position.x;
-            body.velocity.x = -body.velocity.x * body.restitution;
-        }
-        if (position.y - size/2 < 0) {
-            position.y = size/2;
-            body.position.y = position.y;
-            body.velocity.y = -body.velocity.y * body.restitution;
-        }
-        if (position.y + size/2 > 600) {
-            position.y = 600 - size/2;
-            body.position.y = position.y;
-            body.velocity.y = -body.velocity.y * body.restitution;
-        }
-    }
-    
-    void Render(Renderer* renderer) override {
-        Rect rect(position.x - size/2, position.y - size/2, size, size);
-        renderer->DrawRect(rect, Color(255, 100, 100, 255));
-    }
-    
-private:
-    float size;
-    Physics::Body body;
+const char* glsl_version = "#version 130";
+
+enum class AppMode {
+    Launcher,
+    Editor
 };
 
-class GameScene : public Scene {
-public:
-    void Initialize() override {
-        // Add some bouncing balls
-        AddGameObject(std::make_shared<Ball>(100, 100));
-        AddGameObject(std::make_shared<Ball>(200, 150));
-        AddGameObject(std::make_shared<Ball>(300, 100));
-        
-        std::cout << "Game scene initialized with bouncing balls!" << std::endl;
-    }
-    
-    void Update(float deltaTime) override {
-        Scene::Update(deltaTime);
-        
-        // Example: Add new ball on space press
-        if (GetEngine() && GetEngine()->GetInputManager()->IsKeyPressed(SDLK_SPACE)) {
-            AddGameObject(std::make_shared<Ball>(400, 100));
-        }
-        
-        // Quit on ESC
-        if (GetEngine() && GetEngine()->GetInputManager()->IsKeyPressed(SDLK_ESCAPE)) {
-            GetEngine()->Quit();
-        }
-    }
-};
+bool CreateSDLWindowAndContext(SDL_Window*& window, SDL_GLContext& gl_context, const char* title, int w, int h, bool fullscreen = false) {
+    Uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+    if (fullscreen) windowFlags |= SDL_WINDOW_FULLSCREEN;
 
-class GameEngine : public Engine {
-public:
-    bool Initialize() {
-        if (!Engine::Initialize("Simple 2D Game Engine - Demo", 800, 600)) {
-            return false;
-        }
-        
-        // Create and initialize scene
-        m_scene = std::make_unique<GameScene>();
-        m_scene->SetEngine(this);
-        m_scene->Initialize();
-        
-        return true;
+    window = SDL_CreateWindow(title, w, h, windowFlags);
+    if (!window) {
+        std::cerr << "Failed to create SDL window: " << SDL_GetError() << std::endl;
+        return false;
     }
-    
-protected:
-    virtual void Update(float deltaTime) {
-        if (m_scene) {
-            m_scene->Update(deltaTime);
-        }
-    }
-    
-    virtual void Render() {
-        GetRenderer()->Clear(Color(50, 50, 100, 255)); // Dark blue background
-        
-        if (m_scene) {
-            m_scene->Render(GetRenderer());
-        }
-        
-        GetRenderer()->Present();
-    }
-    
-private:
-    std::unique_ptr<GameScene> m_scene;
-};
 
-int main(int argc, char* argv[]) {
-    GameEngine engine;
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
+    gl_context = SDL_GL_CreateContext(window);
+    if (!gl_context) {
+        std::cerr << "Failed to create GL context: " << SDL_GetError() << std::endl;
+        return false;
+    }
+
+    SDL_GL_MakeCurrent(window, gl_context);
+    const char* gl_ver = (const char*)glGetString(GL_VERSION);
+    std::cout << "OpenGL version: " << (gl_ver ? gl_ver : "<null>") << std::endl;
+    SDL_GL_SetSwapInterval(1); // vsync
+    return true;
+}
+
+int main(int argc, char** argv) {
+    (void)argc; (void)argv;
+
+    std::cout << "Starting 9Gravity Game Engine..." << std::endl;
+    std::cout << "Testing basic functionality..." << std::endl;
+
+    GameEditor editor;
+    std::cout << "GameEditor created successfully!" << std::endl;
+    std::cout << "Build number: " << editor.CurrentBuildNumber() << std::endl;
     
-    if (!engine.Initialize()) {
-        std::cerr << "Failed to initialize engine!" << std::endl;
+    std::cout << "Basic test passed! Now initializing SDL3..." << std::endl;
+
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        std::cerr << "Error: SDL_Init failed: " << SDL_GetError() << std::endl;
         return -1;
     }
-    
-    std::cout << "=== Simple 2D Game Engine Demo ===" << std::endl;
-    std::cout << "Controls:" << std::endl;
-    std::cout << "  SPACE - Add new ball" << std::endl;
-    std::cout << "  ESC   - Quit" << std::endl;
-    std::cout << "=================================" << std::endl;
-    
-    engine.Run();
-    
+
+    std::cout << "SDL3 initialized successfully!" << std::endl;
+
+    SDL_Window* window = nullptr;
+    SDL_GLContext gl_context = nullptr;
+
+    if (!CreateSDLWindowAndContext(window, gl_context, "Game Editor Launcher", 1280, 720, false)) {
+        return -1;
+    }
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
+    bool running = true;
+    AppMode mode = AppMode::Launcher;
+
+    bool requestOpenFileDialog = false;
+    std::string loadedProjectPath;
+
+    while (running) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            ImGui_ImplSDL3_ProcessEvent(&event);
+            if (event.type == SDL_EVENT_QUIT) {
+                running = false;
+            }
+            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
+                running = false;
+            }
+        }
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
+        ImGui::NewFrame();
+
+        if (mode == AppMode::Launcher) {
+            bool switchToEditor = editor.RenderLauncher(requestOpenFileDialog, loadedProjectPath);
+
+            if (!loadedProjectPath.empty()) {
+
+                ImGui::Render();
+                ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+                SDL_GL_SwapWindow(window);
+
+                ImGui_ImplOpenGL3_Shutdown();
+                ImGui_ImplSDL3_Shutdown();
+                SDL_GL_DestroyContext(gl_context);
+                SDL_DestroyWindow(window);
+
+                if (!CreateSDLWindowAndContext(window, gl_context, ("Game Editor - " + loadedProjectPath).c_str(), 1280, 720, true)) {
+                    std::cerr << "Failed to create fullscreen editor window" << std::endl;
+                    running = false;
+                    break;
+                }
+
+                ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
+                ImGui_ImplOpenGL3_Init(glsl_version);
+
+                editor.OpenProject(loadedProjectPath);
+                mode = AppMode::Editor;
+                loadedProjectPath.clear();
+            }
+
+            if (requestOpenFileDialog) {
+                static char pathBuf[1024] = "";
+                ImGui::OpenPopup("Load Project Path");
+                if (ImGui::BeginPopupModal("Load Project Path", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    ImGui::InputText("Path", pathBuf, sizeof(pathBuf));
+                    if (ImGui::Button("Load")) {
+                        if (std::filesystem::exists(pathBuf)) {
+                            editor.OpenProject(pathBuf);
+
+                            ImGui::Render();
+                            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+                            SDL_GL_SwapWindow(window);
+
+                            ImGui_ImplOpenGL3_Shutdown();
+                            ImGui_ImplSDL3_Shutdown();
+                            SDL_GL_DestroyContext(gl_context);
+                            SDL_DestroyWindow(window);
+
+                            if (!CreateSDLWindowAndContext(window, gl_context, ("Game Editor - " + std::string(pathBuf)).c_str(), 1280, 720, true)) {
+                                std::cerr << "Failed to create fullscreen editor window" << std::endl;
+                                running = false;
+                                break;
+                            }
+                            ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
+                            ImGui_ImplOpenGL3_Init(glsl_version);
+
+                            mode = AppMode::Editor;
+                            requestOpenFileDialog = false;
+                        } else {
+                            std::cerr << "Path doesn't exist: " << pathBuf << std::endl;
+                        }
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel")) {
+                        ImGui::CloseCurrentPopup();
+                        requestOpenFileDialog = false;
+                    }
+                    ImGui::EndPopup();
+                }
+            }
+        } else { 
+            editor.RenderEditor();
+        }
+
+        ImGui::Render();
+        {
+            static bool s_printed = false;
+            if (!s_printed) {
+                auto& textures = ImGui::GetPlatformIO().Textures;
+                std::cout << "ImGui Textures count: " << textures.size() << std::endl;
+                for (size_t i = 0; i < textures.size() && i < 4; ++i) {
+                    ImTextureData* tex = textures[i];
+                    if (tex) {
+                        std::cout << "  tex[" << i << "]: status=" << (int)tex->Status << ", id=" << (void*)tex->TexID << ", wxh=" << tex->Width << "x" << tex->Height << std::endl;
+                    }
+                }
+                s_printed = true;
+            }
+        }
+        for (ImTextureData* tex : ImGui::GetPlatformIO().Textures) {
+            if (tex && tex->Status != ImTextureStatus_OK) {
+                ImGui_ImplOpenGL3_UpdateTexture(tex);
+            }
+        }
+        glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
+        glClearColor(0.1f, 0.12f, 0.12f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        SDL_GL_SwapWindow(window);
+    }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
+    ImGui::DestroyContext();
+
+    if (gl_context) SDL_GL_DestroyContext(gl_context);
+    if (window) SDL_DestroyWindow(window);
+    SDL_Quit();
+
     return 0;
 }
