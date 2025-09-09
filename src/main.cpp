@@ -176,25 +176,6 @@ int main(int argc, char** argv) {
         }
 
         ImGui::Render();
-        {
-            static bool s_printed = false;
-            if (!s_printed) {
-                auto& textures = ImGui::GetPlatformIO().Textures;
-                std::cout << "ImGui Textures count: " << textures.size() << std::endl;
-                for (size_t i = 0; i < textures.size() && i < 4; ++i) {
-                    ImTextureData* tex = textures[i];
-                    if (tex) {
-                        std::cout << "  tex[" << i << "]: status=" << (int)tex->Status << ", id=" << (void*)tex->TexID << ", wxh=" << tex->Width << "x" << tex->Height << std::endl;
-                    }
-                }
-                s_printed = true;
-            }
-        }
-        for (ImTextureData* tex : ImGui::GetPlatformIO().Textures) {
-            if (tex && tex->Status != ImTextureStatus_OK) {
-                ImGui_ImplOpenGL3_UpdateTexture(tex);
-            }
-        }
         glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
         glClearColor(0.1f, 0.12f, 0.12f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);

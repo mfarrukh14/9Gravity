@@ -84,9 +84,6 @@ if(NOT SDL3_FOUND)
     message(FATAL_ERROR "SDL3 not found! Please ensure SDL3 is in the SDL/ directory or install it system-wide")
 endif()
 
-# Include directories
-target_include_directories(${PROJECT_NAME} PRIVATE include)
-
 # Source files
 set(SOURCES
     src/main.cpp
@@ -97,10 +94,21 @@ set(SOURCES
     src/AssetManager.cpp
     src/Scene.cpp
     src/Physics.cpp
+    editor/gui/GameEditor.cpp
+    imgui/imgui.cpp
+    imgui/imgui_demo.cpp
+    imgui/imgui_draw.cpp
+    imgui/imgui_tables.cpp
+    imgui/imgui_widgets.cpp
+    imgui/backends/imgui_impl_sdl3.cpp
+    imgui/backends/imgui_impl_opengl3.cpp
 )
 
 # Create executable
 add_executable(${PROJECT_NAME} ${SOURCES})
+
+# Include directories
+target_include_directories(${PROJECT_NAME} PRIVATE include imgui imgui/backends)
 
 # Link SDL3
 target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
