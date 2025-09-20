@@ -84,8 +84,8 @@ if(NOT SDL3_FOUND)
     message(FATAL_ERROR "SDL3 not found! Please ensure SDL3 is in the SDL/ directory or install it system-wide")
 endif()
 
-# Include directories
-target_include_directories(${PROJECT_NAME} PRIVATE include)
+# Find OpenGL
+find_package(OpenGL REQUIRED)
 
 # Source files
 set(SOURCES
@@ -97,13 +97,31 @@ set(SOURCES
     src/AssetManager.cpp
     src/Scene.cpp
     src/Physics.cpp
+    editor/gui/GameEditor.cpp
+    # ImGui sources
+    imgui/imgui.cpp
+    imgui/imgui_draw.cpp
+    imgui/imgui_tables.cpp
+    imgui/imgui_widgets.cpp
+    imgui/imgui_demo.cpp
+    # ImGui backends
+    imgui/backends/imgui_impl_sdl3.cpp
+    imgui/backends/imgui_impl_opengl3.cpp
 )
 
 # Create executable
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+# Include directories
+target_include_directories(${PROJECT_NAME} PRIVATE include)
+target_include_directories(${PROJECT_NAME} PRIVATE imgui)
+target_include_directories(${PROJECT_NAME} PRIVATE imgui/backends)
+
 # Link SDL3
 target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
+
+# Link OpenGL
+target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL)
 
 # Link optional libraries if found
 if(SDL3_image_FOUND)
@@ -148,9 +166,11 @@ else()
 endif()
 
 # Copy assets directory to build directory
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/assets
-    $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets
-    COMMENT "Copying assets"
-)
+if(EXISTS "${CMAKE_SOURCE_DIR}/assets")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets
+        COMMENT "Copying assets"
+    )
+endif()
