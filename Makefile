@@ -99,28 +99,26 @@ ifeq ($(PLATFORM),Windows)
     LIBS += -lopengl32
     
 else ifeq ($(PLATFORM),Linux)
-    # Check for local SDL first (for consistent builds)
-    LOCAL_SDL_PATH := ./SDL/linux-$(SDL_ARCH)
-    ifneq ($(wildcard $(LOCAL_SDL_PATH)),)
-        INCLUDES += -I"$(LOCAL_SDL_PATH)/include"
-        LIBS += -L"$(LOCAL_SDL_PATH)/lib" -lSDL3
-        SDL_SOURCE := local
+    # For Linux, we don't have local SDL3 in the project (only Windows builds available)
+    # Go straight to system detection
+    
+    # Try pkg-config first, then fallback to system paths
+    SDL_CFLAGS := $(shell pkg-config --cflags sdl3 2>/dev/null)
+    SDL_LIBS := $(shell pkg-config --libs sdl3 2>/dev/null)
+    
+    ifneq ($(SDL_CFLAGS),)
+        INCLUDES += $(SDL_CFLAGS)
+        LIBS += $(SDL_LIBS)
+        SDL_SOURCE := pkg-config
     else
-        # Try pkg-config first, then fallback to system paths
-        SDL_CFLAGS := $(shell pkg-config --cflags sdl3 2>/dev/null)
-        SDL_LIBS := $(shell pkg-config --libs sdl3 2>/dev/null)
-        
-        ifneq ($(SDL_CFLAGS),)
-            INCLUDES += $(SDL_CFLAGS)
-            LIBS += $(SDL_LIBS)
-            SDL_SOURCE := pkg-config
-        else
-            # Fallback to common system paths
-            INCLUDES += -I/usr/include/SDL3 -I/usr/local/include/SDL3
-            LIBS += -lSDL3
-            SDL_SOURCE := system
-        endif
+        # Fallback to common system paths
+        INCLUDES += -I/usr/include/SDL3 -I/usr/local/include/SDL3
+        LIBS += -lSDL3
+        SDL_SOURCE := system
     endif
+    
+    # Linux-specific OpenGL linking
+    LIBS += -lGL
     
 else ifeq ($(PLATFORM),macOS)
     # Check for local SDL first

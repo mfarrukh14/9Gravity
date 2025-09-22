@@ -9,37 +9,52 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# Detect architecture
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(SDL_ARCH "x86_64-w64-mingw32")
+# Detect platform and architecture
+if(WIN32)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(SDL_ARCH "x86_64-w64-mingw32")
+    else()
+        set(SDL_ARCH "i686-w64-mingw32")
+    endif()
+    set(SDL3_ROOT_DIR "${CMAKE_SOURCE_DIR}/SDL/${SDL_ARCH}")
+    set(SDL3_INCLUDE_DIR "${SDL3_ROOT_DIR}/include")
+    set(SDL3_LIBRARY_DIR "${SDL3_ROOT_DIR}/lib")
 else()
-    set(SDL_ARCH "i686-w64-mingw32")
+    # On Linux/Unix, we don't have local SDL3 in the project
+    # Skip local SDL3 detection and go straight to system detection
+    set(SDL3_ROOT_DIR "")
+    set(SDL3_INCLUDE_DIR "")
+    set(SDL3_LIBRARY_DIR "")
 endif()
 
-# Set local SDL paths
-set(SDL3_ROOT_DIR "${CMAKE_SOURCE_DIR}/SDL/${SDL_ARCH}")
-set(SDL3_INCLUDE_DIR "${SDL3_ROOT_DIR}/include")
-set(SDL3_LIBRARY_DIR "${SDL3_ROOT_DIR}/lib")
-
 # Find SDL3 library
-find_library(SDL3_LIBRARY
-    NAMES SDL3 libSDL3
-    PATHS ${SDL3_LIBRARY_DIR}
-    NO_DEFAULT_PATH
-)
-
-# Check if we found SDL3 locally
-if(SDL3_LIBRARY AND EXISTS "${SDL3_INCLUDE_DIR}/SDL3/SDL.h")
-    set(SDL3_FOUND TRUE)
-    message(STATUS "Found local SDL3: ${SDL3_LIBRARY}")
-    
-    # Create imported target
-    add_library(SDL3::SDL3 UNKNOWN IMPORTED)
-    set_target_properties(SDL3::SDL3 PROPERTIES
-        IMPORTED_LOCATION "${SDL3_LIBRARY}"
-        INTERFACE_INCLUDE_DIRECTORIES "${SDL3_INCLUDE_DIR}"
+if(WIN32)
+    find_library(SDL3_LIBRARY
+        NAMES SDL3 libSDL3
+        PATHS ${SDL3_LIBRARY_DIR}
+        NO_DEFAULT_PATH
     )
+
+    # Check if we found SDL3 locally
+    if(SDL3_LIBRARY AND EXISTS "${SDL3_INCLUDE_DIR}/SDL3/SDL.h")
+        set(SDL3_FOUND TRUE)
+        message(STATUS "Found local SDL3: ${SDL3_LIBRARY}")
+        
+        # Create imported target
+        add_library(SDL3::SDL3 UNKNOWN IMPORTED)
+        set_target_properties(SDL3::SDL3 PROPERTIES
+            IMPORTED_LOCATION "${SDL3_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${SDL3_INCLUDE_DIR}"
+        )
+    else()
+        set(SDL3_FOUND FALSE)
+    endif()
 else()
+    # On Linux/Unix, skip local SDL3 and go straight to system detection
+    set(SDL3_FOUND FALSE)
+endif()
+
+if(NOT SDL3_FOUND)
     # Fallback to system SDL3
     message(STATUS "Local SDL3 not found, trying system installation...")
     find_package(SDL3 QUIET CONFIG)
