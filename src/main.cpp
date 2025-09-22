@@ -15,7 +15,8 @@ const char* glsl_version = "#version 130";
 
 enum class AppMode {
     Launcher,
-    Editor
+    Editor,
+    Switching
 };
 
 bool CreateSDLWindowAndContext(SDL_Window*& window, SDL_GLContext& gl_context, const char* title, int w, int h, bool fullscreen = false) {
@@ -102,15 +103,47 @@ int main(int argc, char** argv) {
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
+        for (ImTextureData* tex : ImGui::GetPlatformIO().Textures) {
+            if (tex && tex->Status != ImTextureStatus_OK) {
+                ImGui_ImplOpenGL3_UpdateTexture(tex);
+            }
+        }
+
         if (mode == AppMode::Launcher) {
             bool switchToEditor = editor.RenderLauncher(requestOpenFileDialog, loadedProjectPath);
 
             if (!loadedProjectPath.empty()) {
+                mode = AppMode::Switching;
+                continue;
+            }
 
-                ImGui::Render();
-                ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-                SDL_GL_SwapWindow(window);
-
+            if (requestOpenFileDialog) {
+                static char pathBuf[1024] = "";
+                ImGui::OpenPopup("Load Project Path");
+                if (ImGui::BeginPopupModal("Load Project Path", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    ImGui::InputText("Path", pathBuf, sizeof(pathBuf));
+                    if (ImGui::Button("Load")) {
+                        if (std::filesystem::exists(pathBuf)) {
+                            editor.OpenProject(pathBuf);
+                            mode = AppMode::Switching;
+                            requestOpenFileDialog = false;
+                        } else {
+                            std::cerr << "Path doesn't exist: " << pathBuf << std::endl;
+                        }
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel")) {
+                        ImGui::CloseCurrentPopup();
+                        requestOpenFileDialog = false;
+                    }
+                    ImGui::EndPopup();
+                }
+            }
+        } else if (mode == AppMode::Switching) {
+            // Handle the mode switch here, after ImGui has finished rendering the previous frame
+            if (!loadedProjectPath.empty()) {
+                // Switch to editor mode
                 ImGui_ImplOpenGL3_Shutdown();
                 ImGui_ImplSDL3_Shutdown();
                 SDL_GL_DestroyContext(gl_context);
@@ -128,49 +161,10 @@ int main(int argc, char** argv) {
                 editor.OpenProject(loadedProjectPath);
                 mode = AppMode::Editor;
                 loadedProjectPath.clear();
+            } else {
+                mode = AppMode::Launcher;
             }
-
-            if (requestOpenFileDialog) {
-                static char pathBuf[1024] = "";
-                ImGui::OpenPopup("Load Project Path");
-                if (ImGui::BeginPopupModal("Load Project Path", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-                    ImGui::InputText("Path", pathBuf, sizeof(pathBuf));
-                    if (ImGui::Button("Load")) {
-                        if (std::filesystem::exists(pathBuf)) {
-                            editor.OpenProject(pathBuf);
-
-                            ImGui::Render();
-                            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-                            SDL_GL_SwapWindow(window);
-
-                            ImGui_ImplOpenGL3_Shutdown();
-                            ImGui_ImplSDL3_Shutdown();
-                            SDL_GL_DestroyContext(gl_context);
-                            SDL_DestroyWindow(window);
-
-                            if (!CreateSDLWindowAndContext(window, gl_context, ("Game Editor - " + std::string(pathBuf)).c_str(), 1280, 720, true)) {
-                                std::cerr << "Failed to create fullscreen editor window" << std::endl;
-                                running = false;
-                                break;
-                            }
-                            ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
-                            ImGui_ImplOpenGL3_Init(glsl_version);
-
-                            mode = AppMode::Editor;
-                            requestOpenFileDialog = false;
-                        } else {
-                            std::cerr << "Path doesn't exist: " << pathBuf << std::endl;
-                        }
-                        ImGui::CloseCurrentPopup();
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button("Cancel")) {
-                        ImGui::CloseCurrentPopup();
-                        requestOpenFileDialog = false;
-                    }
-                    ImGui::EndPopup();
-                }
-            }
+            continue; 
         } else { 
             editor.RenderEditor();
         }
@@ -188,11 +182,6 @@ int main(int argc, char** argv) {
                     }
                 }
                 s_printed = true;
-            }
-        }
-        for (ImTextureData* tex : ImGui::GetPlatformIO().Textures) {
-            if (tex && tex->Status != ImTextureStatus_OK) {
-                ImGui_ImplOpenGL3_UpdateTexture(tex);
             }
         }
         glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);

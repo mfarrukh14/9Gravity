@@ -1,1 +1,109 @@
+# Build directories and artifacts
+build/
+cmake-build-*/
+out/
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.o
+*.obj
 
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*.log
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# IDEs and Editors
+*.swp
+*.swo
+*~
+.idea/
+*.sublime-project
+*.sublime-workspace
+.vscode/settings.json
+.vscode/launch.json
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+*.bak
+*.backup
+
+# Project specific
+# Keep SDL/ directory but ignore any generated files within it
+SDL/*/
+!SDL/
+# Keep imgui/ directory but ignore any generated files within it
+imgui/*/
+!imgui/
+# Ignore any project directories that might be created during development
+[0-9]*/
+New/
+ewr/
+examples/*/
+!examples/
+
+# Game assets (uncomment if you want to ignore large asset files)
+# assets/
+# *.png
+# *.jpg
+# *.jpeg
+# *.gif
+# *.bmp
+# *.tga
+# *.wav
+# *.mp3
+# *.ogg
+
+# Logs and debug files
+*.log
+logs/
+debug/
+*.pdb
+*.ilk
+
+# Package management
+vcpkg/
+conan/
+packages/
+
+# Backup files
+*.orig
+*.rej
