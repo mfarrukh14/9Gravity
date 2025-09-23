@@ -27,13 +27,14 @@ endif
 # Compiler and flags
 CXX := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -O2
-INCLUDES := -Iinclude -Iimgui -Iimgui/backends
+INCLUDES := -Iinclude -Iimgui -Iimgui/backends -Ieditor
 
 # Source and object files
 SRCDIR := src
+EDITORDIR := editor/gui
 IMGUIDIR := imgui
 IMGUI_BACKEND_DIR := imgui/backends
-SOURCES := $(wildcard $(SRCDIR)/*.cpp) $(wildcard $(IMGUIDIR)/*.cpp) $(IMGUI_BACKEND_DIR)/imgui_impl_sdl3.cpp $(IMGUI_BACKEND_DIR)/imgui_impl_opengl3.cpp
+SOURCES := $(wildcard $(SRCDIR)/*.cpp) $(wildcard $(EDITORDIR)/*.cpp) $(wildcard $(IMGUIDIR)/*.cpp) $(IMGUI_BACKEND_DIR)/imgui_impl_sdl3.cpp $(IMGUI_BACKEND_DIR)/imgui_impl_opengl3.cpp
 OBJECTS := $(SOURCES:.cpp=.o)
 TARGET := 9Gravity$(EXECUTABLE_EXT)
 

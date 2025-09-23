@@ -99,6 +99,45 @@ if(NOT SDL3_FOUND)
     message(FATAL_ERROR "SDL3 not found! Please ensure SDL3 is in the SDL/ directory or install it system-wide")
 endif()
 
+# Find SDL3_image
+find_package(SDL3_image QUIET CONFIG)
+if(NOT SDL3_image_FOUND)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(SDL3_image QUIET SDL3_image)
+    endif()
+    
+    # Manual fallback for SDL3_image
+    if(NOT SDL3_image_FOUND)
+        find_path(SDL3_image_INCLUDE_DIR SDL3_image/SDL_image.h
+            PATHS
+                /usr/include
+                /usr/local/include
+                /opt/homebrew/include
+        )
+        
+        find_library(SDL3_image_LIBRARY
+            NAMES SDL3_image libSDL3_image
+            PATHS
+                /usr/lib
+                /usr/local/lib
+                /opt/homebrew/lib
+        )
+        
+        if(SDL3_image_INCLUDE_DIR AND SDL3_image_LIBRARY)
+            set(SDL3_image_FOUND TRUE)
+            add_library(SDL3_image::SDL3_image UNKNOWN IMPORTED)
+            set_target_properties(SDL3_image::SDL3_image PROPERTIES
+                IMPORTED_LOCATION "${SDL3_image_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${SDL3_image_INCLUDE_DIR}"
+            )
+            message(STATUS "Found SDL3_image: ${SDL3_image_LIBRARY}")
+        else()
+            message(WARNING "SDL3_image not found! Image loading will be disabled.")
+        endif()
+    endif()
+endif()
+
 # Find OpenGL
 find_package(OpenGL REQUIRED)
 

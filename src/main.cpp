@@ -5,7 +5,10 @@
 #include <imgui_impl_opengl3.h>
 
 #include <SDL3/SDL.h>            
-#include <SDL3/SDL_opengl.h>     
+#include <SDL3/SDL_opengl.h>
+#ifdef HAVE_SDL3_IMAGE
+#include <SDL3_image/SDL_image.h>
+#endif
 #include <stdio.h>
 #include <filesystem>
 #include <string>
@@ -63,14 +66,36 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    std::cout << "SDL3 initialized successfully!" << std::endl;
+#ifdef HAVE_SDL3_IMAGE
+    // Initialize SDL_image
+    int imgFlags = IMG_INIT_PNG | IMG_INIT_JPG;
+    if (!(IMG_Init(imgFlags) & imgFlags)) {
+        std::cerr << "SDL_image could not initialize! SDL_image Error: " << IMG_GetError() << std::endl;
+        std::cerr << "Image loading will be disabled." << std::endl;
+    } else {
+        std::cout << "SDL3 and SDL_image initialized successfully!" << std::endl;
+    }
+#else
+    std::cout << "SDL3 initialized successfully! (Image loading disabled - SDL3_image not available)" << std::endl;
+#endif
 
     SDL_Window* window = nullptr;
     SDL_GLContext gl_context = nullptr;
+    SDL_Renderer* renderer = nullptr;
 
     if (!CreateSDLWindowAndContext(window, gl_context, "Game Editor Launcher", 1280, 720, false)) {
         return -1;
     }
+
+    // Create a renderer for texture loading
+    renderer = SDL_CreateRenderer(window, NULL);
+    if (!renderer) {
+        std::cerr << "Failed to create renderer: " << SDL_GetError() << std::endl;
+        return -1;
+    }
+
+    // Set the renderer for the editor
+    editor.SetRenderer(renderer);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -114,7 +139,7 @@ int main(int argc, char** argv) {
 
             if (!loadedProjectPath.empty()) {
                 mode = AppMode::Switching;
-                continue;
+                // Don't continue here - we need to finish the frame
             }
 
             if (requestOpenFileDialog) {
@@ -143,9 +168,18 @@ int main(int argc, char** argv) {
         } else if (mode == AppMode::Switching) {
             // Handle the mode switch here, after ImGui has finished rendering the previous frame
             if (!loadedProjectPath.empty()) {
+                // Finish current frame before switching
+                ImGui::Render();
+                glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
+                glClearColor(0.1f, 0.12f, 0.12f, 1.0f);
+                glClear(GL_COLOR_BUFFER_BIT);
+                ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+                SDL_GL_SwapWindow(window);
+                
                 // Switch to editor mode
                 ImGui_ImplOpenGL3_Shutdown();
                 ImGui_ImplSDL3_Shutdown();
+                SDL_DestroyRenderer(renderer);
                 SDL_GL_DestroyContext(gl_context);
                 SDL_DestroyWindow(window);
 
@@ -155,16 +189,25 @@ int main(int argc, char** argv) {
                     break;
                 }
 
+                // Create new renderer for the new window
+                renderer = SDL_CreateRenderer(window, NULL);
+                if (!renderer) {
+                    std::cerr << "Failed to create renderer for editor: " << SDL_GetError() << std::endl;
+                    running = false;
+                    break;
+                }
+                editor.SetRenderer(renderer);
+
                 ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
                 ImGui_ImplOpenGL3_Init(glsl_version);
 
                 editor.OpenProject(loadedProjectPath);
                 mode = AppMode::Editor;
                 loadedProjectPath.clear();
+                continue; // Skip rendering this frame
             } else {
                 mode = AppMode::Launcher;
             }
-            continue; 
         } else { 
             editor.RenderEditor();
         }
@@ -197,8 +240,12 @@ int main(int argc, char** argv) {
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 
+    if (renderer) SDL_DestroyRenderer(renderer);
     if (gl_context) SDL_GL_DestroyContext(gl_context);
     if (window) SDL_DestroyWindow(window);
+#ifdef HAVE_SDL3_IMAGE
+    IMG_Quit();
+#endif
     SDL_Quit();
 
     return 0;
